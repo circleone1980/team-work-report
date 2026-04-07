@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-团队工作周报/月报生成工具 - 主入口
-集成Excel解析、规则匹配、智能聚类和报告生成功能
+Team Work Report Skill
+从禅道Excel工作记录自动生成团队业务导向的周报/月报
 """
 import argparse
 import sys
@@ -21,21 +21,13 @@ def main():
     parser = argparse.ArgumentParser(description='生成团队工作周报/月报')
     parser.add_argument('excel_file', help='禅道Excel文件路径')
     parser.add_argument('--type', choices=['weekly', 'monthly'], default='monthly',
-                        help='报告类型：weekly(周报) 或 monthly(月报)，默认monthly')
+                        help='报告类型')
     parser.add_argument('--no-interactive', action='store_true',
-                        help='非交互模式，跳过规则确认')
+                        help='跳过交互式确认')
     parser.add_argument('--output', '-o', default='report.md',
-                        help='输出文件路径，默认report.md')
-    parser.add_argument('--verbose', '-v', action='store_true',
-                        help='详细输出模式')
+                        help='输出文件路径')
 
     args = parser.parse_args()
-
-    # 验证输入文件
-    excel_path = Path(args.excel_file)
-    if not excel_path.exists():
-        print(f"错误：文件不存在：{args.excel_file}")
-        sys.exit(1)
 
     # 初始化组件
     excel_parser = ExcelParser()
@@ -44,135 +36,118 @@ def main():
     report_gen = MarkdownGenerator()
     rules_manager = RulesManager()
 
-    # 1. 解析Excel
-    print(f"解析Excel文件：{args.excel_file}")
-    data = excel_parser.parse(str(excel_path))
-    print(f"  找到 {len(data['tasks'])} 条工作记录")
-    if args.verbose:
-        print(f"  月份：{data['month']}")
+    try:
+        # 1. 解析Excel
+        print(f"解析Excel文件：{args.excel_file}")
+        data = excel_parser.parse(args.excel_file)
+        print(f"   找到 {len(data['tasks'])} 条工作记录")
 
-    # 2. 加载规则
-    print("\n加载业务规则...")
-    rules = rules_manager.load_rules()
-    if rules:
-        print(f"  已加载 {len(rules)} 条业务规则")
-    else:
-        print("  未找到现有规则，将使用智能聚类")
+        # 2. 加载规则
+        print("\n加载业务规则...")
+        rules = rules_manager.load_rules()
 
-    # 3. 业务分组
-    businesses = []
-    unmatched_tasks = []
+        if rules:
+            print(f"   加载了 {len(rules)} 个业务规则")
 
-    if rules:
-        # 使用规则匹配
-        matched, unmatched = rule_matcher.batch_match(data['tasks'], rules)
-        match_rate = rule_matcher.calculate_match_rate(matched, len(data['tasks']))
+            # 3. 规则匹配
+            print("\n匹配工作记录...")
+            matched, unmatched = rule_matcher.batch_match(data['tasks'], rules)
+            match_rate = rule_matcher.calculate_match_rate(matched, len(data['tasks']))
+            print(f"   匹配率：{match_rate:.1%}")
 
-        print(f"\n规则匹配结果：")
-        print(f"  已匹配：{len(matched)} 条")
-        print(f"  未匹配：{len(unmatched)} 条")
-        print(f"  匹配率：{match_rate:.1%}")
+            # 如果未匹配率 > 30%，触发聚类
+            if len(unmatched) / len(data['tasks']) > 0.3:
+                print(f"\n发现较多未匹配工作 ({len(unmatched)}条)")
+                print("智能聚类新业务...")
+                new_businesses = llm_cluster.cluster(unmatched)
 
-        # 如果未匹配率 > 30%，触发重新聚类
-        if len(unmatched) / len(data['tasks']) > 0.3:
-            print(f"\n  发现较多未匹配工作 ({len(unmatched)}条)，启动智能聚类...")
+                # 交互式确认（简化版，默认接受）
+                print(f"\n发现 {len(new_businesses)} 个新业务：")
+                for i, biz in enumerate(new_businesses, 1):
+                    print(f"  {i}. 【{biz['name']}】 {biz['total_hours']}h")
+
+                # 更新规则
+                rules_manager.update_rules([
+                    {
+                        'name': b['name'],
+                        'keywords': b['keywords'],
+                        'match_rule': f'"{" | ".join(b["keywords"][:2])}" in task',
+                        'total_hours': b['total_hours']
+                    }
+                    for b in new_businesses
+                ])
+                print("   已保存新规则")
+
+                # 重新聚类所有任务
+                businesses = llm_cluster.cluster(data['tasks'])
+            else:
+                # 将匹配的任务转换为业务格式
+                businesses = []
+                for business_name in set([b for _, b in matched]):
+                    business_tasks = [t for t, b in matched if b == business_name]
+                    businesses.append({
+                        'name': business_name,
+                        'total_hours': sum(t['hours'] for t in business_tasks),
+                        'people': list(set(t['person'] for t in business_tasks)),
+                        'summary': f"{business_name}相关工作"
+                    })
+
+                # 添加未匹配任务
+                if unmatched:
+                    businesses.append({
+                        'name': '其他工作',
+                        'total_hours': sum(t['hours'] for t in unmatched),
+                        'people': list(set(t['person'] for t in unmatched)),
+                        'summary': '临时性支持工作'
+                    })
+        else:
+            # 首次使用：完全聚类
+            print("   首次使用，开始智能聚类...")
             businesses = llm_cluster.cluster(data['tasks'])
 
-            # 保存新规则
+            print(f"\n识别到 {len(businesses)} 个业务类型：")
+            for i, biz in enumerate(businesses, 1):
+                print(f"  {i}. 【{biz['name']}】 {biz['total_hours']}h")
+                print(f"     关键词：{', '.join(biz['keywords'][:3])}")
+
+            # 保存规则
             if not args.no_interactive:
-                print("  更新业务规则...")
-                _save_businesses_as_rules(businesses, rules_manager)
-        else:
-            # 转换匹配结果为业务格式
-            business_dict = {}
-            for task, business_name in matched:
-                if business_name not in business_dict:
-                    business_dict[business_name] = {
-                        'tasks': [],
-                        'people': set(),
-                        'hours': 0.0
+                print("\n保存业务规则...")
+                rules_to_save = [
+                    {
+                        'name': b['name'],
+                        'keywords': b['keywords'],
+                        'match_rule': f'"{" | ".join(b["keywords"][:2])}" in task',
+                        'total_hours': b['total_hours']
                     }
-                business_dict[business_name]['tasks'].append(task)
-                business_dict[business_name]['people'].add(task['person'])
-                business_dict[business_name]['hours'] += task.get('hours', 0)
+                    for b in businesses
+                ]
+                rules_manager.save_rules(rules_to_save)
+                print("   已保存到 business_rules.md")
 
-            for business_name, info in business_dict.items():
-                businesses.append({
-                    'name': business_name,
-                    'people': list(info['people']),
-                    'total_hours': info['hours'],
-                    'summary': _generate_summary(business_name, info['tasks'])
-                })
+        # 4. 生成报告
+        print(f"\n生成{args.type}...")
+        report = report_gen.generate(
+            month=data['month'],
+            businesses=businesses,
+            unmatched_tasks=[]
+        )
 
-            unmatched_tasks = unmatched
+        # 5. 保存报告
+        output_path = Path(args.output)
+        output_path.write_text(report, encoding='utf-8')
+        print(f"   报告已保存到：{output_path}")
 
-        # 按工时排序
-        businesses.sort(key=lambda x: x.get('total_hours', 0), reverse=True)
+        print("\n完成！")
 
-    else:
-        # 首次使用，智能聚类
-        print("  首次使用，开始智能聚类...")
-        businesses = llm_cluster.cluster(data['tasks'])
-
-        if not args.no_interactive:
-            print("  保存业务规则...")
-            _save_businesses_as_rules(businesses, rules_manager)
-
-    if args.verbose and businesses:
-        print(f"\n识别的业务领域：{', '.join([b['name'] for b in businesses])}")
-
-    # 4. 生成报告
-    print(f"\n生成{args.type}报告...")
-    report = report_gen.generate(
-        month=data['month'],
-        businesses=businesses,
-        unmatched_tasks=unmatched_tasks
-    )
-
-    # 5. 保存报告
-    output_path = Path(args.output)
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    output_path.write_text(report, encoding='utf-8')
-    print(f"  报告已保存到：{output_path}")
-
-    print("\n完成！")
-
-
-def _generate_summary(business_name: str, tasks: list) -> str:
-    """生成业务总结"""
-    if not tasks:
-        return f"{business_name}暂无相关任务"
-
-    count = len(tasks)
-    hours = sum(t.get('hours', 0) for t in tasks)
-
-    # 获取前3个任务的简述
-    details = [t.get('detail', '')[:50] for t in tasks[:3] if t.get('detail')]
-
-    parts = [f"**{business_name}**共完成{count}项任务，累计工时{hours}小时"]
-    if details:
-        parts.append(f"主要工作包括：{'; '.join(details)}")
-
-    return "，".join(parts) + "。"
-
-
-def _save_businesses_as_rules(businesses: list, rules_manager):
-    """将业务列表保存为规则"""
-    rules_data = []
-    for b in businesses:
-        keywords = b.get('keywords', [])
-        if not keywords:
-            # 如果没有关键词，从业务名称提取
-            keywords = [b['name']]
-
-        rules_data.append({
-            'name': b['name'],
-            'keywords': keywords,
-            'match_rule': f"'{b['name']}' in task or any(kw in task for kw in {keywords})",
-            'total_hours': b.get('total_hours', 0)
-        })
-
-    rules_manager.save_rules(rules_data)
+    except FileNotFoundError as e:
+        print(f"错误：文件不存在 - {e}")
+        sys.exit(1)
+    except Exception as e:
+        print(f"错误：{e}")
+        import traceback
+        traceback.print_exc()
+        sys.exit(1)
 
 
 if __name__ == '__main__':
