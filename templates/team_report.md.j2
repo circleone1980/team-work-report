@@ -1,0 +1,57 @@
+# {{ month }} 团队工作报告
+
+## 概述
+
+本报告汇总了团队在 {{ month }} 的工作情况。
+
+### 统计概览
+
+- **参与人数**: {{ stats.total_people }} 人
+- **总工时**: {{ stats.total_hours }} 小时
+- **项目数量**: {{ stats.total_projects }} 个
+- **任务数量**: {{ stats.total_tasks }} 个
+
+---
+
+## 项目汇总
+
+{% for project in projects %}
+### {{ project.name }}
+
+- **总工时**: {{ project.total_hours }} 小时
+- **参与人数**: {{ project.people_count }} 人
+- **任务数量**: {{ project.task_count }} 个
+
+**参与人员**:
+{% for person in project.people %}
+- {{ person.name }}: {{ person.hours }} 小时
+{% endfor %}
+
+{% endfor %}
+
+---
+
+## 人员详情
+
+{% for person in people %}
+### {{ person.name }}
+
+- **总工时**: {{ person.total_hours }} 小时
+- **参与项目**: {{ person.project_count }} 个
+- **任务数量**: {{ person.task_count }} 个
+
+**项目分布**:
+{% for proj in person.projects %}
+- {{ proj.name }}: {{ proj.hours }} 小时
+{% endfor %}
+
+**工作明细**:
+{% for task in person.tasks %}
+- {{ task.date }}: {{ task.project }} - {{ task.detail }} ({{ task.hours }}h)
+{% endfor %}
+
+{% endfor %}
+
+---
+
+*报告生成时间: {{ generated_at }}*
