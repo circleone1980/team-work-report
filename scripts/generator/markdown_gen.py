@@ -1,3 +1,6 @@
+"""
+Markdown报告生成器
+"""
 from typing import List, Dict
 from datetime import datetime
 from jinja2 import Template
@@ -21,6 +24,7 @@ class MarkdownGenerator:
         Returns:
             Markdown字符串
         """
+        # 渲染模板
         report = self.template.render(
             month=month,
             businesses=businesses,
