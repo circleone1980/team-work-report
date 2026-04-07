@@ -1,3 +1,6 @@
+"""
+规则管理器 - 管理业务分类规则文件
+"""
 import os
 from typing import Dict, List
 from datetime import datetime
@@ -10,6 +13,18 @@ class RulesManager:
         self.rules_file = rules_file
 
     def load_rules(self) -> Dict:
+        """
+        加载规则文件
+
+        Returns:
+            {
+                '业务名称': {
+                    'keywords': List[str],
+                    'match_rule': str,
+                    'total_hours': float
+                }
+            }
+        """
         if not os.path.exists(self.rules_file):
             return {}
 
@@ -20,7 +35,7 @@ class RulesManager:
             for line in f:
                 line = line.strip()
 
-                # 识别业务名称
+                # 识别业务名称（### 数字. 名称）
                 if line.startswith('### ') and '. ' in line:
                     parts = line.split('. ', 1)
                     if len(parts) == 2:
@@ -34,9 +49,7 @@ class RulesManager:
                 # 提取关键词
                 elif line.startswith('- **关键词**：') and current_business:
                     keywords_str = line.split('：', 1)[1]
-                    rules[current_business]['keywords'] = [
-                        k.strip() for k in keywords_str.split(',')
-                    ]
+                    rules[current_business]['keywords'] = [k.strip() for k in keywords_str.split(',')]
 
                 # 提取匹配规则
                 elif line.startswith('- **匹配规则**：`') and current_business:
@@ -46,6 +59,7 @@ class RulesManager:
         return rules
 
     def save_rules(self, businesses: List[Dict]):
+        """保存规则到文件"""
         with open(self.rules_file, 'w', encoding='utf-8') as f:
             f.write("# 业务分类规则\n\n")
             f.write(f"## 元数据\n")
@@ -62,14 +76,20 @@ class RulesManager:
                 f.write("\n")
 
     def update_rules(self, new_businesses: List[Dict]):
+        """增量更新规则"""
         existing = self.load_rules()
 
+        # 添加新业务
         for business in new_businesses:
             if business['name'] not in existing:
                 existing[business['name']] = business
 
+        # 保存所有规则
         businesses_list = [
-            {'name': name, **data}
+            {
+                'name': name,
+                **data
+            }
             for name, data in existing.items()
         ]
         self.save_rules(businesses_list)
