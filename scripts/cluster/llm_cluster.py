@@ -1,24 +1,13 @@
 """
-LLM聚类器 - 基于关键词的简化版智能聚类
-支持智能聚类任务、提取业务名称和关键词、生成业务总结
+LLM聚类器 - 基于关键词的简化聚类器（可升级为LLM版本）
 """
-import re
-from typing import Dict, List
+from typing import List, Dict
 from collections import Counter
+import re
 
 
 class LLMCluster:
     """基于关键词的简化聚类器（可升级为LLM版本）"""
-
-    # 业务名称识别规则
-    BUSINESS_NAME_RULES = {
-        '形成性评价系统': ['学生画像', '形成性', '评价'],
-        '智能文档处理': ['OCR', '文档', '解析', 'doc'],
-        '报告批阅系统': ['批阅', '报告'],
-    }
-
-    # 停用词列表
-    STOP_WORDS = {'的', '了', '和', '与', '等', '及', '在', '是', '有', '对'}
 
     def cluster(self, tasks: List[Dict]) -> List[Dict]:
         """
@@ -83,19 +72,6 @@ class LLMCluster:
                     'summary': self._generate_summary(cluster_tasks, cluster_keywords)
                 })
 
-        # 处理未被分配的任务
-        for i, task in enumerate(tasks):
-            if i not in used_tasks:
-                keywords = self._extract_keywords(task['detail'])
-                businesses.append({
-                    'name': self._generate_business_name('', keywords),
-                    'keywords': keywords[:5],
-                    'total_hours': task['hours'],
-                    'people': [task['person']],
-                    'sample_tasks': [task['detail'][:60]],
-                    'summary': self._generate_summary([task], keywords)
-                })
-
         # 按工时排序
         businesses.sort(key=lambda x: x['total_hours'], reverse=True)
 
@@ -103,14 +79,17 @@ class LLMCluster:
 
     def _extract_keywords(self, text: str) -> List[str]:
         """提取关键词"""
+        # 移除停用词
+        stop_words = {'的', '了', '和', '与', '等', '及', '在', '是', '有', '对'}
+
         # 分词（简化版，按标点和空格分割）
-        words = re.split(r'[，。！？、\s,!?]+', text)
+        words = re.split(r'[，。！？、\s]+', text)
 
         # 过滤
         keywords = []
         for word in words:
             word = word.strip()
-            if len(word) >= 2 and word not in self.STOP_WORDS:
+            if len(word) >= 2 and word not in stop_words:
                 keywords.append(word)
 
         return keywords
@@ -118,13 +97,17 @@ class LLMCluster:
     def _generate_business_name(self, keyword: str, keywords: List[str]) -> str:
         """生成业务名称"""
         # 简单规则：如果关键词包含特定词，使用固定名称
-        for business_name, rule_keywords in self.BUSINESS_NAME_RULES.items():
-            for rule_keyword in rule_keywords:
-                if rule_keyword in keyword or any(rule_keyword in k for k in keywords):
-                    return business_name
-
-        # 使用最长的关键词
-        return max(keywords, key=len) if keywords else '其他工作'
+        if '学生画像' in keyword or '形成性' in keyword or '评价' in keyword:
+            return '形成性评价系统'
+        elif 'OCR' in keyword or '文档' in keyword or '解析' in keyword:
+            return '智能文档处理'
+        elif '批阅' in keyword or '报告' in keyword:
+            return '报告批阅系统'
+        elif '泰擎' in keyword or 'II期' in keyword:
+            return '泰擎II期项目'
+        else:
+            # 使用最长的关键词
+            return max(keywords, key=len) if keywords else '其他工作'
 
     def _generate_summary(self, tasks: List[Dict], keywords: List[str]) -> str:
         """生成业务总结"""
@@ -134,4 +117,4 @@ class LLMCluster:
             detail = task['detail'][:50]
             summaries.append(detail)
 
-        return '。'.join(summaries) + ('。' if summaries else '')
+        return '。'.join(summaries) + '。' if summaries else '相关工作'
