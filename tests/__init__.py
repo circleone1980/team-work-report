@@ -1,3 +1,1 @@
-"""
-Tests for work report project.
-"""
+"""Tests package"""
