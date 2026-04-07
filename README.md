@@ -1,18 +1,6 @@
-# 团队工作周报/月报生成工具
+# Team Work Report Skill
 
-> 自动从禅道Excel导出生成结构化的团队工作报告
-
-## 项目介绍
-
-这是一个智能的团队工作报告生成工具，能够从禅道导出的Excel表格中自动提取工作记录，通过规则匹配和AI智能聚类，生成结构清晰的周报或月报文档。
-
-### 核心功能
-
-- **Excel解析**：自动解析禅道导出的Excel工作记录表格
-- **智能分组**：基于规则匹配和LLM聚类，将工作任务自动分组到业务领域
-- **业务规则学习**：自动保存和复用业务分类规则，提升后续处理效率
-- **Markdown报告**：生成格式清晰的Markdown格式报告
-- **双模式支持**：支持周报和月报两种报告类型
+从禅道Excel工作记录自动生成团队业务导向的周报/月报。
 
 ## 快速开始
 
@@ -22,154 +10,70 @@
 pip install -r requirements.txt
 ```
 
-### 基本用法
+### 使用方法
+
+**首次使用：**
 
 ```bash
-# 生成月报（默认）
-python scripts/skill.py 你的文件.xlsx
-
-# 生成周报
-python scripts/skill.py 你的文件.xlsx --type weekly
-
-# 指定输出文件
-python scripts/skill.py 你的文件.xlsx -o output.md
-
-# 非交互模式（跳过规则确认）
-python scripts/skill.py 你的文件.xlsx --no-interactive
+python scripts/skill.py 2026年3月工作耗时统计表.xlsx
 ```
 
-### 命令行参数
+系统将：
+1. 解析Excel工作记录
+2. 智能聚类业务类型
+3. 展示识别结果
+4. 生成Markdown报告
+5. 保存规则文件
 
-| 参数 | 说明 | 默认值 |
-|------|------|--------|
-| `excel_file` | Excel文件路径（必需） | - |
-| `--type` | 报告类型：weekly/monthly | monthly |
-| `--output`, `-o` | 输出文件路径 | report.md |
-| `--no-interactive` | 非交互模式，跳过规则确认 | False |
-| `--verbose`, `-v` | 详细输出模式 | False |
-| `--help` | 显示帮助信息 | - |
+**后续使用：**
 
-## 项目结构
-
+```bash
+python scripts/skill.py 2026年4月工作耗时统计表.xlsx
 ```
-team-work-report/
-├── scripts/
-│   └── skill.py              # 主入口程序
-├── parser/
-│   ├── __init__.py
-│   └── excel_parser.py       # Excel解析器
-├── cluster/
-│   ├── __init__.py
-│   ├── rule_matcher.py       # 规则匹配器
-│   └── llm_cluster.py        # LLM智能聚类
-├── generator/
-│   ├── __init__.py
-│   └── markdown_gen.py       # Markdown报告生成器
-├── templates/
-│   └── monthly_report.md     # 月报模板
-├── utils/
-│   ├── __init__.py
-│   └── rules_manager.py      # 业务规则管理器
-├── tests/
-│   ├── fixtures/             # 测试数据
-│   ├── test_integration.py   # 集成测试
-│   ├── test_parser.py        # 解析器测试
-│   ├── test_rule_matcher.py  # 规则匹配测试
-│   ├── test_llm_cluster.py   # 聚类测试
-│   ├── test_generator.py     # 生成器测试
-│   └── test_rules_manager.py # 规则管理测试
-├── requirements.txt          # 依赖清单
-├── README.md                 # 本文档
-└── skill.md                  # Claude Code技能定义
-```
+
+系统将自动加载历史规则，识别新业务。
+
+## 参数说明
+
+- `excel_file`: 禅道Excel文件路径（必需）
+- `--type`: 报告类型（weekly/monthly，默认monthly）
+- `--no-interactive`: 跳过交互式确认
+- `--output, -o`: 输出文件路径（默认report.md）
 
 ## 输出示例
 
-生成的报告包含以下结构：
-
 ```markdown
-# 团队工作月报 - 2026年3月
+# 2026年3月团队工作月报
 
-## 核心业务进展
+## 一、核心业务进展
 
-### 1. 前端开发（40小时）
-**参与人员**：张三、李四
+### 1. 形成性评价系统
+AI驱动全流程数字化，完成学生画像8维度设计...
 
-**工作概述**：完成了页面开发工作
-
-**任务列表**
-- 完成登录页面开发 - 张三（8小时）
-- 实现数据可视化组件 - 李四（12小时）
-
-### 2. 后端开发（35小时）
-...
-
-## 其他工作
-
-- 文档整理与更新 - 王五（5小时）
-...
+**工时**：120.5h | **团队**：张三、李四、王五
 ```
 
-## 技术栈
+## 规则文件
 
-- **Python 3.8+**
-- **openpyxl** - Excel文件解析
-- **pandas** - 数据处理
-- **anthropic** - Claude API集成（智能聚类）
-- **jinja2** - 模板引擎
-- **pytest** - 测试框架
+规则保存在 `business_rules.md`，支持手动编辑和版本控制。
 
-## 开发与测试
-
-### 运行测试
+## 测试
 
 ```bash
 # 运行所有测试
 pytest tests/ -v
 
-# 运行特定测试文件
-pytest tests/test_integration.py -v
-
-# 查看测试覆盖率
-pytest tests/ --cov=. --cov-report=html
+# 运行特定测试
+pytest tests/test_parser.py -v
 ```
 
-### 测试数据
+## 技术栈
 
-项目包含测试用的示例数据：
-- `tests/fixtures/sample_data.xlsx` - 标准测试数据
-- `tests/fixtures/empty.xlsx` - 空表格测试数据
-
-## 配置
-
-### API密钥
-
-智能聚类功能需要配置Claude API密钥：
-
-```bash
-# 设置环境变量
-export ANTHROPIC_API_KEY="your-api-key"
-
-# 或在项目中创建 .env 文件
-echo "ANTHROPIC_API_KEY=your-api-key" > .env
-```
-
-### 业务规则
-
-首次运行时，工具会自动生成 `business_rules.md` 文件，保存学习的业务分类规则。后续运行会复用这些规则提高效率。
+- Python 3.8+
+- openpyxl + pandas（Excel解析）
+- Claude API（可选，用于LLM聚类）
+- Jinja2（模板引擎）
 
 ## 许可证
 
-MIT License
-
-## 贡献
-
-欢迎提交Issue和Pull Request！
-
-## 版本历史
-
-- **v1.0.0** - 初始版本
-  - Excel解析功能
-  - 规则匹配和智能聚类
-  - Markdown报告生成
-  - 完整测试覆盖
+MIT
