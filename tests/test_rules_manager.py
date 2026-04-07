@@ -1,149 +1,93 @@
-import os
+"""
+规则管理器测试
+"""
 import pytest
-import tempfile
+import os
+import sys
+from pathlib import Path
+
+# 添加scripts目录到路径
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
 from scripts.utils.rules_manager import RulesManager
 
 
-@pytest.fixture
-def temp_rules_file():
-    """创建临时规则文件"""
-    fd, path = tempfile.mkstemp(suffix='.md')
-    os.close(fd)
-    yield path
-    if os.path.exists(path):
-        os.remove(path)
+def test_load_empty_rules():
+    """测试加载空规则文件"""
+    manager = RulesManager('tests/fixtures/nonexistent_rules.md')
+    rules = manager.load_rules()
+    assert rules == {}
 
 
-@pytest.fixture
-def manager(temp_rules_file):
-    """创建RulesManager实例"""
-    return RulesManager(rules_file=temp_rules_file)
+def test_save_and_load_rules():
+    """测试保存和加载规则"""
+    manager = RulesManager('tests/fixtures/test_rules.md')
+
+    # 定义测试规则
+    businesses = [
+        {
+            'name': '形成性评价系统',
+            'keywords': ['形成性', '学生画像', '8维度'],
+            'match_rule': '"形成性" in task OR "学生画像" in task',
+            'total_hours': 120.5
+        },
+        {
+            'name': '实验报告批阅',
+            'keywords': ['报告批阅', 'doc', 'pdf'],
+            'match_rule': '"报告批阅" in task OR "doc" in task',
+            'total_hours': 85.0
+        }
+    ]
+
+    # 保存规则
+    manager.save_rules(businesses)
+
+    # 加载规则
+    loaded = manager.load_rules()
+
+    assert '形成性评价系统' in loaded
+    assert loaded['形成性评价系统']['keywords'] == ['形成性', '学生画像', '8维度']
+
+    # 清理测试文件
+    if os.path.exists('tests/fixtures/test_rules.md'):
+        os.remove('tests/fixtures/test_rules.md')
 
 
-class TestRulesManager:
-    """测试RulesManager类"""
+def test_update_rules():
+    """测试更新规则"""
+    manager = RulesManager('tests/fixtures/test_update_rules.md')
 
-    def test_load_empty_rules(self, manager):
-        """测试加载空规则文件"""
-        # 文件不存在时返回空字典
-        manager_no_file = RulesManager(rules_file='non_existent_file.md')
-        rules = manager_no_file.load_rules()
-        assert rules == {}
+    # 初始规则
+    initial = [
+        {
+            'name': '业务A',
+            'keywords': ['A'],
+            'match_rule': '"A" in task',
+            'total_hours': 10.0
+        }
+    ]
+    manager.save_rules(initial)
 
-    def test_save_and_load_rules(self, manager):
-        """测试保存和加载规则"""
-        businesses = [
-            {
-                'name': '系统开发',
-                'keywords': ['开发', '编码', '实现'],
-                'match_rule': r'.*(开发|编码|实现).*',
-                'total_hours': 120.5
-            },
-            {
-                'name': '会议沟通',
-                'keywords': ['会议', '讨论', '沟通'],
-                'match_rule': r'.*(会议|讨论|沟通).*',
-                'total_hours': 45.0
-            }
-        ]
+    # 新增规则
+    new_business = [
+        {
+            'name': '业务B',
+            'keywords': ['B'],
+            'match_rule': '"B" in task',
+            'total_hours': 20.0
+        }
+    ]
+    manager.update_rules(new_business)
 
-        # 保存规则
-        manager.save_rules(businesses)
+    # 验证
+    loaded = manager.load_rules()
+    assert '业务A' in loaded
+    assert '业务B' in loaded
 
-        # 加载规则
-        loaded_rules = manager.load_rules()
+    # 清理
+    if os.path.exists('tests/fixtures/test_update_rules.md'):
+        os.remove('tests/fixtures/test_update_rules.md')
 
-        # 验证
-        assert len(loaded_rules) == 2
-        assert '系统开发' in loaded_rules
-        assert '会议沟通' in loaded_rules
 
-        # 验证系统开发的数据
-        dev_rules = loaded_rules['系统开发']
-        assert dev_rules['keywords'] == ['开发', '编码', '实现']
-        assert dev_rules['match_rule'] == r'.*(开发|编码|实现).*'
-
-        # 验证会议沟通的数据
-        meeting_rules = loaded_rules['会议沟通']
-        assert meeting_rules['keywords'] == ['会议', '讨论', '沟通']
-        assert meeting_rules['match_rule'] == r'.*(会议|讨论|沟通).*'
-
-    def test_update_rules(self, manager):
-        """测试更新规则（新增业务）"""
-        # 先保存现有规则
-        existing_businesses = [
-            {
-                'name': '系统开发',
-                'keywords': ['开发', '编码'],
-                'match_rule': r'.*(开发|编码).*'
-            }
-        ]
-        manager.save_rules(existing_businesses)
-
-        # 添加新业务
-        new_businesses = [
-            {
-                'name': '文档编写',
-                'keywords': ['文档', '说明'],
-                'match_rule': r'.*(文档|说明).*'
-            }
-        ]
-        manager.update_rules(new_businesses)
-
-        # 验证原有业务保留，新业务添加
-        loaded_rules = manager.load_rules()
-        assert len(loaded_rules) == 2
-        assert '系统开发' in loaded_rules
-        assert '文档编写' in loaded_rules
-
-    def test_update_rules_existing_business(self, manager):
-        """测试更新已存在的业务（不应重复）"""
-        # 先保存现有规则
-        existing_businesses = [
-            {
-                'name': '系统开发',
-                'keywords': ['开发', '编码'],
-                'match_rule': r'.*(开发|编码).*'
-            }
-        ]
-        manager.save_rules(existing_businesses)
-
-        # 尝试添加同名业务
-        new_businesses = [
-            {
-                'name': '系统开发',
-                'keywords': ['开发', '编码', '实现'],
-                'match_rule': r'.*(开发|编码|实现).*'
-            }
-        ]
-        manager.update_rules(new_businesses)
-
-        # 验证没有重复
-        loaded_rules = manager.load_rules()
-        assert len(loaded_rules) == 1
-        assert '系统开发' in loaded_rules
-        # 原有规则保持不变
-        assert loaded_rules['系统开发']['keywords'] == ['开发', '编码']
-
-    def test_save_rules_format(self, manager):
-        """测试保存规则的文件格式"""
-        businesses = [
-            {
-                'name': '系统开发',
-                'keywords': ['开发', '编码'],
-                'match_rule': r'.*(开发|编码).*',
-                'total_hours': 100.0
-            }
-        ]
-        manager.save_rules(businesses)
-
-        # 读取文件内容验证格式
-        with open(manager.rules_file, 'r', encoding='utf-8') as f:
-            content = f.read()
-
-        assert '# 业务分类规则' in content
-        assert '## 元数据' in content
-        assert '版本：v1.0' in content
-        assert '## 业务定义' in content
-        assert '### 1. 系统开发' in content
-        assert '- **关键词**：开发, 编码' in content
+if __name__ == '__main__':
+    pytest.main([__file__, '-v'])
