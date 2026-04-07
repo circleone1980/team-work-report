@@ -1,5 +1,15 @@
+"""
+规则匹配器测试
+"""
 import pytest
+import sys
+from pathlib import Path
+
+# 添加scripts目录到路径
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
 from scripts.cluster.rule_matcher import RuleMatcher
+
 
 def test_match_with_rules():
     """测试规则匹配"""
@@ -18,15 +28,21 @@ def test_match_with_rules():
         }
     }
 
-    # 测试匹配
+    # 测试匹配形成性评价
     task1 = {'detail': '完成学生画像8维度设计'}
-    assert matcher.match(task1, rules) == '形成性评价系统'
+    result1 = matcher.match(task1, rules)
+    assert result1 == '形成性评价系统'
 
+    # 测试匹配报告批阅
     task2 = {'detail': 'doc文档解析功能'}
-    assert matcher.match(task2, rules) == '实验报告批阅'
+    result2 = matcher.match(task2, rules)
+    assert result2 == '实验报告批阅'
 
+    # 测试未匹配
     task3 = {'detail': '临时性支持工作'}
-    assert matcher.match(task3, rules) is None
+    result3 = matcher.match(task3, rules)
+    assert result3 is None
+
 
 def test_batch_match():
     """测试批量匹配"""
@@ -49,3 +65,7 @@ def test_batch_match():
 
     assert len(matched) == 2
     assert len(unmatched) == 1
+
+
+if __name__ == '__main__':
+    pytest.main([__file__, '-v'])
