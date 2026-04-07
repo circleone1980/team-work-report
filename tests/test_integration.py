@@ -105,7 +105,7 @@ class TestComponentIntegration:
         manager.save_rules(test_rules)
         assert rules_file.exists()
 
-        # 测试加载规则 - load_rules返回字典格式
+        # 测试加载规则 - load_rules返回字典格式 {业务名: {...}}
         loaded = manager.load_rules()
         assert len(loaded) == 1
         assert '测试业务' in loaded
