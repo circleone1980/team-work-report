@@ -4,13 +4,40 @@
 
 ## 快速开始
 
-### 安装依赖
+### 方式一：全局安装（推荐）
+
+安装为Claude Code全局skill，可在任何目录使用：
+
+```bash
+# 克隆仓库
+git clone https://github.com/circleone1980/team-work-report.git
+cd team-work-report
+
+# 安装到全局skills目录
+python install_global.py
+```
+
+安装后，在Claude Code中任何位置都可以使用：
+
+```bash
+/team-work-report <Excel文件路径>
+```
+
+卸载全局skill：
+
+```bash
+python install_global.py uninstall
+```
+
+### 方式二：本地使用
+
+**安装依赖：**
 
 ```bash
 pip install -r requirements.txt
 ```
 
-### 使用方法
+**使用方法：**
 
 **首次使用：**
 
@@ -67,13 +94,74 @@ pytest tests/ -v
 pytest tests/test_parser.py -v
 ```
 
+**当前测试状态：** 35/35 通过 ✅
+
+## 项目结构
+
+```
+team-work-report/
+├── SKILL.md                 # Skill定义（全局安装后使用）
+├── README.md                # 本文档
+├── requirements.txt         # Python依赖
+├── install_global.py        # 全局安装脚本
+├── scripts/
+│   ├── skill.py            # 主入口
+│   ├── parser/             # Excel解析模块
+│   ├── cluster/            # 聚类模块
+│   ├── generator/          # 报告生成模块
+│   └── utils/              # 工具类
+├── templates/              # Jinja2模板
+├── tests/                  # 测试套件
+└── examples/               # 示例报告
+```
+
 ## 技术栈
 
-- Python 3.8+
-- openpyxl + pandas（Excel解析）
-- Claude API（可选，用于LLM聚类）
-- Jinja2（模板引擎）
+- **Python 3.8+**
+- **openpyxl + pandas**（Excel解析）
+- **Claude API**（可选，用于LLM聚类）
+- **Jinja2**（模板引擎）
+
+## 核心功能
+
+### 1. 智能聚类
+- 基于关键词的自动业务类型识别
+- 支持升级为真实LLM API
+- 自动发现新业务类型
+
+### 2. 增量学习
+- 规则持久化存储
+- 支持增量更新
+- 团队负责人可调整分类
+
+### 3. 灵活报告
+- 周报/月报模式
+- Markdown格式输出
+- 业务导向的组织结构
+
+## 更新日志
+
+### v1.0.0 (2026-04-07)
+- ✅ 首次发布
+- ✅ Excel解析功能
+- ✅ 关键词聚类算法
+- ✅ Markdown报告生成
+- ✅ 规则持久化
+- ✅ 全局安装支持
+- ✅ 35个测试通过
+
+## 贡献
+
+欢迎提交Issue和Pull Request！
 
 ## 许可证
 
-MIT
+MIT License
+
+## GitHub
+
+https://github.com/circleone1980/team-work-report
+
+---
+
+**Made with ❤️ for better team reporting**
